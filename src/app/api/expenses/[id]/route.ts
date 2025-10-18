@@ -8,6 +8,14 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Check if database is available
+  if (!db) {
+    return NextResponse.json(
+      { error: 'Database not available' },
+      { status: 503 }
+    );
+  }
+
   try {
     const { id } = await params;
     const [expense] = await db
@@ -37,6 +45,14 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Check if database is available
+  if (!db) {
+    return NextResponse.json(
+      { error: 'Database not available' },
+      { status: 503 }
+    );
+  }
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -79,6 +95,14 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Check if database is available
+  if (!db) {
+    return NextResponse.json(
+      { error: 'Database not available' },
+      { status: 503 }
+    );
+  }
+
   try {
     const { id } = await params;
     const [deletedExpense] = await db

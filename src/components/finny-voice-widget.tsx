@@ -48,6 +48,36 @@ export function FinnyVoiceWidget({ className = "" }: FinnyVoiceWidgetProps) {
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const [speechSupported, setSpeechSupported] = useState(false);
 
+  const speakResponse = useCallback((text: string) => {
+    if (!synthRef.current || isMuted) return;
+    
+    // Cancel any ongoing speech
+    synthRef.current.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1.1;
+    utterance.volume = 0.8;
+    
+    // Find a pleasant voice
+    const voices = synthRef.current.getVoices();
+    const preferredVoice = voices.find(voice => 
+      voice.name.includes('Samantha') || 
+      voice.name.includes('Karen') || 
+      voice.name.includes('Female') ||
+      voice.lang.includes('en-US')
+    );
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    synthRef.current.speak(utterance);
+  }, [isMuted]);
+
   const handleUserSpeech = useCallback(async (userText: string) => {
     console.log('User said:', userText);
     
@@ -76,7 +106,7 @@ export function FinnyVoiceWidget({ className = "" }: FinnyVoiceWidgetProps) {
       setFinnyMessage(mockResponse);
       speakResponse(mockResponse);
     }
-  }, []);
+  }, [speakResponse]); // Added speakResponse to dependency array
 
   // Initialize speech APIs
   useEffect(() => {
@@ -136,36 +166,6 @@ export function FinnyVoiceWidget({ className = "" }: FinnyVoiceWidgetProps) {
     } else {
       return "I'm here to help with all your financial questions! You can ask me about stock prices, budgeting, investments, retirement planning, or any other money matters.";
     }
-  };
-
-  const speakResponse = (text: string) => {
-    if (!synthRef.current || isMuted) return;
-    
-    // Cancel any ongoing speech
-    synthRef.current.cancel();
-    
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.9;
-    utterance.pitch = 1.1;
-    utterance.volume = 0.8;
-    
-    // Find a pleasant voice
-    const voices = synthRef.current.getVoices();
-    const preferredVoice = voices.find(voice => 
-      voice.name.includes('Samantha') || 
-      voice.name.includes('Karen') || 
-      voice.name.includes('Female') ||
-      voice.lang.includes('en-US')
-    );
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
-    }
-
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-
-    synthRef.current.speak(utterance);
   };
 
   const connectToFinny = async () => {

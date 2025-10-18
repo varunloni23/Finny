@@ -5,6 +5,14 @@ import { desc, sum } from 'drizzle-orm';
 
 // GET - Fetch all expenses
 export async function GET() {
+  // Check if database is available
+  if (!db) {
+    return NextResponse.json(
+      { error: 'Database not available' },
+      { status: 503 }
+    );
+  }
+
   try {
     const allExpenses = await db.select().from(expenses).orderBy(desc(expenses.date));
     
@@ -30,6 +38,14 @@ export async function GET() {
 
 // POST - Create new expense
 export async function POST(request: NextRequest) {
+  // Check if database is available
+  if (!db) {
+    return NextResponse.json(
+      { error: 'Database not available' },
+      { status: 503 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { category, amount, date, description } = body;
