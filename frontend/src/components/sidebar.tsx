@@ -25,7 +25,7 @@ export function Sidebar() {
   return (
     <div className="flex h-full flex-col border-r bg-card">
       <div className="flex h-16 items-center border-b px-6">
-        <h1 className="text-xl font-bold">FinAI</h1>
+        <h1 className="text-xl font-bold">Finny</h1>
       </div>
       <div className="flex-1 overflow-auto py-2">
         <nav className="grid items-start px-4 text-sm font-medium">

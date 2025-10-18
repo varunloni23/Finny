@@ -19,8 +19,12 @@ import {
 
 import { cn } from "@/lib/utils"
 
+interface ChartData {
+  [key: string]: string | number;
+}
+
 interface ChartProps {
-  data: any[]
+  data: ChartData[]
   type: "line" | "bar" | "pie"
   dataKey?: string
   categoryKey?: string

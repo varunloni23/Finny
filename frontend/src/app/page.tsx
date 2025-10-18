@@ -3,56 +3,79 @@
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/card";
 import { Chart } from "@/components/chart";
+import { FinnyIntegrationDemo } from "@/components/finny-integration-demo";
+import { expenseApi, type Expense } from "@/lib/api";
 
 export default function FinanceDashboard() {
-  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [totalExpenses, setTotalExpenses] = useState(0);
   const [loading, setLoading] = useState(true);
-
-  // Mock data for demonstration
-  const mockExpenses = [
-    { id: 1, title: 'Groceries', amount: 120.50, date: '2023-06-15', category: 'Food' },
-    { id: 2, title: 'Gas', amount: 45.00, date: '2023-06-14', category: 'Transportation' },
-    { id: 3, title: 'Netflix', amount: 15.99, date: '2023-06-10', category: 'Entertainment' },
-    { id: 4, title: 'Electricity', amount: 85.25, date: '2023-06-05', category: 'Utilities' },
-  ];
-
-  const mockInvestments = [
-    { id: 1, name: 'Bitcoin', type: 'crypto', amount: 5000.00, symbol: 'BTC', quantity: 0.25 },
-    { id: 2, name: 'Apple Inc', type: 'stock', amount: 2500.00, symbol: 'AAPL', quantity: 10 },
-    { id: 3, name: 'Ethereum', type: 'crypto', amount: 3000.00, symbol: 'ETH', quantity: 2.5 },
-  ];
-
-  const mockMarketData = [
-    { name: 'Jan', btc: 40000, eth: 2500, aapl: 150 },
-    { name: 'Feb', btc: 42000, eth: 2700, aapl: 155 },
-    { name: 'Mar', btc: 45000, eth: 3000, aapl: 160 },
-    { name: 'Apr', btc: 48000, eth: 3200, aapl: 165 },
-    { name: 'May', btc: 50000, eth: 3500, aapl: 170 },
-    { name: 'Jun', btc: 52000, eth: 3800, aapl: 175 },
-  ];
-
-  const expenseData = [
-    { name: 'Food', value: 450 },
-    { name: 'Transportation', value: 200 },
-    { name: 'Entertainment', value: 150 },
-    { name: 'Utilities', value: 300 },
-    { name: 'Other', value: 100 },
-  ];
+  const [error, setError] = useState<string | null>(null);
+  const [userProfile, setUserProfile] = useState({ firstName: 'User' });
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setDashboardData({
-        user: { firstName: 'John', lastName: 'Doe' },
-        expenses: mockExpenses,
-        investments: mockInvestments,
-        expenseInsights: 'You are spending 15% more on groceries this month compared to last month. Consider meal planning to reduce costs.',
-        investmentRecommendations: 'Your portfolio is performing well. Consider diversifying into tech stocks for long-term growth.',
-        marketData: mockMarketData,
-      });
-      setLoading(false);
-    }, 1000);
+    loadDashboardData();
+    loadUserProfile();
   }, []);
+
+  const loadUserProfile = () => {
+    const savedProfile = localStorage.getItem('finny-profile');
+    if (savedProfile) {
+      try {
+        const parsedProfile = JSON.parse(savedProfile);
+        setUserProfile(parsedProfile);
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+      }
+    }
+  };
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Load real expense data from database
+      const expenseData = await expenseApi.getExpenses();
+      setExpenses(expenseData.expenses.slice(0, 4)); // Show only recent 4 expenses
+      setTotalExpenses(expenseData.total);
+    } catch (err) {
+      setError('Failed to load dashboard data');
+      console.error('Error loading dashboard data:', err);
+      // Set empty state on error
+      setExpenses([]);
+      setTotalExpenses(0);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate expense distribution from real data
+  const categories = ['Food', 'Transportation', 'Entertainment', 'Utilities', 'Healthcare', 'Other'];
+  const expenseData = categories.map(category => {
+    const categoryTotal = expenses
+      .filter(expense => expense.category === category)
+      .reduce((sum, expense) => sum + parseFloat(expense.amount), 0);
+    return { name: category, value: categoryTotal };
+  }).filter(item => item.value > 0);
+
+  // Calculate monthly metrics
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const monthlyExpenses = expenses.filter(expense => {
+    const expenseDate = new Date(expense.date);
+    return expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear;
+  });
+  const monthlyTotal = monthlyExpenses.reduce((sum, expense) => sum + parseFloat(expense.amount), 0);
+
+  const formatDate = (dateString: string | Date) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
+
+  const formatAmount = (amount: string | number) => {
+    return parseFloat(amount.toString()).toFixed(2);
+  };
 
   if (loading) {
     return (
@@ -69,122 +92,120 @@ export default function FinanceDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back, {dashboardData?.user.firstName}</p>
+        <p className="text-muted-foreground">
+          Welcome back, {userProfile.firstName}! Here&apos;s your financial overview
+        </p>
       </div>
+
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <p className="text-red-600 text-sm">{error}</p>
+            <p className="text-red-500 text-xs mt-2">
+              Some features may not work without database connection
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Balance</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$12,560.75</div>
-            <p className="text-xs text-muted-foreground">+2.5% from last month</p>
+            <div className="text-2xl font-bold">${totalExpenses.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">All time expenses</p>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Monthly Expenses</CardTitle>
+            <CardTitle className="text-sm font-medium">This Month</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$2,345.25</div>
-            <p className="text-xs text-muted-foreground">+5.2% from last month</p>
+            <div className="text-2xl font-bold">${monthlyTotal.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">{monthlyExpenses.length} expenses this month</p>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Investments</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Records</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$10,500.00</div>
-            <p className="text-xs text-muted-foreground">+3.8% from last month</p>
+            <div className="text-2xl font-bold">{expenses.length}</div>
+            <p className="text-xs text-muted-foreground">Expense entries tracked</p>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Credit Score</CardTitle>
+            <CardTitle className="text-sm font-medium">Average Expense</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">756</div>
-            <p className="text-xs text-muted-foreground">+12 points from last month</p>
+            <div className="text-2xl font-bold">
+              ${expenses.length > 0 ? (totalExpenses / expenses.length).toFixed(2) : '0.00'}
+            </div>
+            <p className="text-xs text-muted-foreground">Per transaction</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Market Trends</CardTitle>
-          </CardHeader>
-          <CardContent className="h-80">
-            <Chart 
-              data={mockMarketData} 
-              type="line" 
-              dataKey="btc"
-              categoryKey="name"
-            />
-          </CardContent>
-        </Card>
+      {/* Finny Integration Demo */}
+      <div className="grid grid-cols-1 gap-6">
+        <FinnyIntegrationDemo />
+      </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Expense Distribution</CardTitle>
           </CardHeader>
           <CardContent className="h-80">
-            <Chart 
-              data={expenseData} 
-              type="pie" 
-              dataKey="value"
-              categoryKey="name"
-            />
+            {expenseData.length > 0 ? (
+              <Chart 
+                data={expenseData} 
+                type="pie" 
+                dataKey="value"
+                categoryKey="name"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <div className="text-center">
+                  <p>No expense data to display</p>
+                  <p className="text-sm">Add expenses to see distribution</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Recent Expenses</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {dashboardData?.expenses.map((expense: any) => (
-                <div key={expense.id} className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{expense.title}</p>
-                    <p className="text-sm text-muted-foreground">{expense.category}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">${expense.amount.toFixed(2)}</p>
-                    <p className="text-sm text-muted-foreground">{expense.date}</p>
-                  </div>
+              {expenses.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No expenses found</p>
+                  <p className="text-sm">Go to the Expenses page to add your first expense</p>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Investments</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {dashboardData?.investments.map((investment: any) => (
-                <div key={investment.id} className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{investment.name}</p>
-                    <p className="text-sm text-muted-foreground">{investment.symbol}</p>
+              ) : (
+                expenses.map((expense) => (
+                  <div key={expense.id} className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{expense.description}</p>
+                      <p className="text-sm text-muted-foreground">{expense.category}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">${formatAmount(expense.amount)}</p>
+                      <p className="text-sm text-muted-foreground">{formatDate(expense.date)}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium">${investment.amount.toFixed(2)}</p>
-                    <p className="text-sm text-muted-foreground">{investment.quantity} {investment.symbol}</p>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -193,20 +214,25 @@ export default function FinanceDashboard() {
       <div className="grid grid-cols-1 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>AI Financial Insights</CardTitle>
+            <CardTitle>Financial Overview</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div>
-                <h3 className="font-medium text-primary">Expense Analysis</h3>
+                <h3 className="font-medium text-primary">Expense Tracking</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {dashboardData?.expenseInsights}
+                  Your expenses are now stored in real-time in the Neon database. 
+                  All data is persistent and synchronized across sessions.
+                  {expenses.length > 0 && ` You have ${expenses.length} expense records totaling $${totalExpenses.toFixed(2)}.`}
                 </p>
               </div>
               <div>
-                <h3 className="font-medium text-primary">Investment Advice</h3>
+                <h3 className="font-medium text-primary">Getting Started</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {dashboardData?.investmentRecommendations}
+                  {expenses.length === 0 
+                    ? "Start by adding your first expense using the Expenses page. Your data will be automatically saved to the database."
+                    : "Continue tracking your expenses to build a comprehensive financial overview. Use the expense categories to organize your spending patterns."
+                  }
                 </p>
               </div>
             </div>

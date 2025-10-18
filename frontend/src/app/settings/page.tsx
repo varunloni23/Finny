@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,21 +22,121 @@ export default function SettingsPage() {
     language: 'en',
   });
 
-  const currencies = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD'];
-  const languages = ['English', 'Spanish', 'French', 'German', 'Japanese'];
+  const [passwords, setPasswords] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
 
-  const handleSave = () => {
-    // In a real app, this would save to a backend
-    console.log('Profile saved:', profile);
-    alert('Settings saved successfully!');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  const currencies = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD'];
+  const languages = [
+    { value: 'en', label: 'English' },
+    { value: 'es', label: 'Spanish' },
+    { value: 'fr', label: 'French' },
+    { value: 'de', label: 'German' },
+    { value: 'ja', label: 'Japanese' }
+  ];
+
+  // Load settings from localStorage on component mount
+  useEffect(() => {
+    const savedProfile = localStorage.getItem('finny-profile');
+    if (savedProfile) {
+      try {
+        const parsedProfile = JSON.parse(savedProfile);
+        setProfile(parsedProfile);
+      } catch (error) {
+        console.error('Error loading saved profile:', error);
+      }
+    }
+    setIsLoaded(true);
+  }, []);
+
+  const handleSave = async () => {
+    setSaveStatus('saving');
+    
+    try {
+      // Save to localStorage
+      localStorage.setItem('finny-profile', JSON.stringify(profile));
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      setSaveStatus('saved');
+      
+      // Reset status after 2 seconds
+      setTimeout(() => setSaveStatus('idle'), 2000);
+      
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    }
   };
+
+  const handlePasswordChange = async () => {
+    if (!passwords.currentPassword || !passwords.newPassword || !passwords.confirmPassword) {
+      alert('Please fill in all password fields');
+      return;
+    }
+
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      alert('New passwords do not match');
+      return;
+    }
+
+    if (passwords.newPassword.length < 6) {
+      alert('New password must be at least 6 characters long');
+      return;
+    }
+
+    // In a real app, this would validate current password and update on backend
+    alert('Password change functionality would be implemented with proper authentication');
+    
+    // Clear password fields
+    setPasswords({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    });
+  };
+
+  const handleBankConnection = (bankName: string, action: 'connect' | 'disconnect') => {
+    // In a real app, this would handle OAuth flow for bank connections
+    alert(`${action === 'connect' ? 'Connecting to' : 'Disconnecting from'} ${bankName}...`);
+  };
+
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p>Loading settings...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">Manage your account settings</p>
+        <p className="text-muted-foreground">Manage your Finny account settings and preferences</p>
       </div>
+
+      {saveStatus === 'saved' && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+          Settings saved successfully!
+        </div>
+      )}
+
+      {saveStatus === 'error' && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          Error saving settings. Please try again.
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
@@ -51,6 +151,7 @@ export default function SettingsPage() {
                   id="firstName"
                   value={profile.firstName}
                   onChange={(e) => setProfile({...profile, firstName: e.target.value})}
+                  placeholder="Enter your first name"
                 />
               </div>
               <div className="space-y-2">
@@ -59,6 +160,7 @@ export default function SettingsPage() {
                   id="lastName"
                   value={profile.lastName}
                   onChange={(e) => setProfile({...profile, lastName: e.target.value})}
+                  placeholder="Enter your last name"
                 />
               </div>
             </div>
@@ -69,9 +171,16 @@ export default function SettingsPage() {
                 type="email"
                 value={profile.email}
                 onChange={(e) => setProfile({...profile, email: e.target.value})}
+                placeholder="Enter your email"
               />
             </div>
-            <Button onClick={handleSave}>Save Changes</Button>
+            <Button 
+              onClick={handleSave} 
+              disabled={saveStatus === 'saving'}
+              className="w-full md:w-auto"
+            >
+              {saveStatus === 'saving' ? 'Saving...' : 'Save Changes'}
+            </Button>
           </CardContent>
         </Card>
 
@@ -87,7 +196,7 @@ export default function SettingsPage() {
                 onValueChange={(value) => setProfile({...profile, currency: value})}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select currency" />
                 </SelectTrigger>
                 <SelectContent>
                   {currencies.map((currency) => (
@@ -105,18 +214,24 @@ export default function SettingsPage() {
                 onValueChange={(value) => setProfile({...profile, language: value})}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select language" />
                 </SelectTrigger>
                 <SelectContent>
-                  {languages.map((language) => (
-                    <SelectItem key={language} value={language}>
-                      {language}
+                  {languages.map((lang) => (
+                    <SelectItem key={lang.value} value={lang.value}>
+                      {lang.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleSave}>Save Preferences</Button>
+            <Button 
+              onClick={handleSave} 
+              disabled={saveStatus === 'saving'}
+              className="w-full md:w-auto"
+            >
+              {saveStatus === 'saving' ? 'Saving...' : 'Save Preferences'}
+            </Button>
           </CardContent>
         </Card>
 
@@ -130,6 +245,8 @@ export default function SettingsPage() {
               <Input
                 id="currentPassword"
                 type="password"
+                value={passwords.currentPassword}
+                onChange={(e) => setPasswords({...passwords, currentPassword: e.target.value})}
                 placeholder="Enter current password"
               />
             </div>
@@ -138,7 +255,9 @@ export default function SettingsPage() {
               <Input
                 id="newPassword"
                 type="password"
-                placeholder="Enter new password"
+                value={passwords.newPassword}
+                onChange={(e) => setPasswords({...passwords, newPassword: e.target.value})}
+                placeholder="Enter new password (min 6 characters)"
               />
             </div>
             <div className="space-y-2">
@@ -146,10 +265,14 @@ export default function SettingsPage() {
               <Input
                 id="confirmPassword"
                 type="password"
+                value={passwords.confirmPassword}
+                onChange={(e) => setPasswords({...passwords, confirmPassword: e.target.value})}
                 placeholder="Confirm new password"
               />
             </div>
-            <Button>Change Password</Button>
+            <Button onClick={handlePasswordChange} className="w-full md:w-auto">
+              Change Password
+            </Button>
           </CardContent>
         </Card>
 
@@ -161,24 +284,45 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between p-4 border rounded-lg">
               <div>
                 <p className="font-medium">Bank of America</p>
-                <p className="text-sm text-muted-foreground">Connected</p>
+                <p className="text-sm text-muted-foreground">Connected • Last sync: 2 hours ago</p>
               </div>
-              <Button variant="destructive">Disconnect</Button>
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={() => handleBankConnection('Bank of America', 'disconnect')}
+              >
+                Disconnect
+              </Button>
             </div>
             <div className="flex items-center justify-between p-4 border rounded-lg">
               <div>
                 <p className="font-medium">Chase Bank</p>
                 <p className="text-sm text-muted-foreground">Not connected</p>
               </div>
-              <Button variant="outline">Connect</Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => handleBankConnection('Chase Bank', 'connect')}
+              >
+                Connect
+              </Button>
             </div>
             <div className="flex items-center justify-between p-4 border rounded-lg">
               <div>
                 <p className="font-medium">PayPal</p>
                 <p className="text-sm text-muted-foreground">Not connected</p>
               </div>
-              <Button variant="outline">Connect</Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => handleBankConnection('PayPal', 'connect')}
+              >
+                Connect
+              </Button>
             </div>
+            <p className="text-xs text-muted-foreground mt-4">
+              Connecting accounts allows Finny to provide better financial insights and tracking.
+            </p>
           </CardContent>
         </Card>
       </div>

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/sidebar";
 import { Header } from "@/components/header";
+import Script from "next/script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FinAI - AI-Powered Personal Finance Manager",
-  description: "Manage your finances with AI-powered insights and real-time market data",
+  title: "Finny - AI-Powered Personal Finance Manager",
+  description: "Your intelligent financial assistant powered by AI",
 };
 
 export default function RootLayout({
@@ -40,6 +41,13 @@ export default function RootLayout({
             </main>
           </div>
         </div>
+        
+        {/* OmniDimension Voice Agent Widget */}
+        <Script
+          id="omnidimension-web-widget"
+          src="https://backend.omnidim.io/web_widget.js?secret_key=24a7e4ebc0b8925120857cca8eb4dd5c"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
